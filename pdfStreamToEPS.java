@@ -33,6 +33,7 @@ public class pdfStreamToEPS {
 		Double yOffset = 0.0;
 		double fontScale = 12.0;
 		String header = "%!PS-Adobe-3.0 EPSF-3.0\n%%Creator pdfStreamParser\n";
+		header = header + "%%BoundingBox: 0 0 " + width + " " + height + "\n";
 		header = header + width + " " + height + " 1\n";
 		String output = "";
 		String footer = "%%EOF";
