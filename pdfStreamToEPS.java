@@ -27,6 +27,7 @@ public class pdfStreamToEPS {
 	static ArrayList<String> EPS = new ArrayList<String>();
 
 	public static String textToEPS (String textStream, int width, int height) {
+		Double shrinkFactor = 1.0; // kludge used for whole string rendering
 		Double x = 0.0;
 		Double xOffset = 0.0;
 		Double y = 0.0;
@@ -40,30 +41,75 @@ public class pdfStreamToEPS {
 		String s = "";
 		String t1 = textStream.substring(7);
 		String[] t2 = t1.split("]],");
+		if (t2.length == 1) { // addresses format without discrete letter rendering
+			System.out.println("Hmm, t2 = t1.split(\"]],\"); was of length 1");
+			String[] temp = t1.split("\\]\\]");
+			t2 = temp[0].split("\\],");
+			for (String ww : t2) {
+				System.out.println("T2: " + ww);
+			}
+			shrinkFactor = 0.82;//This is about right for times, will vary by font
+		}
 		for (String ss : t2) {
 			// this split could break easily with changes to streaming format
 			String[] div = ss.split("0,\\["); 
-			String textHeader = div[0] + "0";
+			String textHeader = div[0];
+			if (div.length > 1) {
+				textHeader = textHeader + "0";
+			}
 			// [1359,260,1541,31,0,[
 			String[] headerData = textHeader.split(",");
 			// text header order here appears to be y, x, width, fontScale
-			// System.out.println("headerData[0] : " + headerData[0]);
+			System.out.println("headerData[0] : " + headerData[0]);
 			yOffset = Double.parseDouble(headerData[0]);
 			xOffset = Double.parseDouble(headerData[1]);
 			fontScale = Double.parseDouble(headerData[3]);
 			output = output + "/Times-Roman findfont\n";
-                	output = output + fontScale + " scalefont\n";
+                	output = output + fontScale*shrinkFactor + " scalefont\n";
 			output = output + "setfont\n";
 			output = output + "0 0 0 setrgbcolor\n";
 			output = output + "newpath\n";
 			output = output + xOffset + " " + (height - yOffset - fontScale) + " moveto\n";
 			String textBody = "";
-			if (div.length == 1) { // the actionURI tags just duplicate text content it seems
-				//String URL = headerData[headerData.length - 1].substring(11);
-				//URL = URL.replaceAll("\\)", "");
-				//output = output + "(" + URL + ") show\n";
+			if (div.length == 1) {
+				// actionURI tags just duplicate text content it seems
+				String text = headerData[5];
+				if (!text.startsWith("\"actionURI")) {
+					System.out.println("not an actionURI");
+					// now, we censor empty text like " "
+					// then substitute unicode insertions 
+					if (!text.equals("\" \"")) {
+						text = text.replaceAll("\"","");
+						text = text.replace("\\ufffd","");
+						text = text.replace(")","\\)");
+						text = text.replace("(","\\(");
+						text = text.replace("&amp;","&");
+						text = text.replace("\\u0026","&");
+						text = text.replace("&gt;","\\>");
+						text = text.replace("&lt;","\\<");
+						text = text.replace("\\u2014","-"); //emdash
+						text = text.replace("\\u2019","'");
+						text = text.replace("\\u201c","`");
+						text = text.replace("\\u201d","'");
+						text = text.replace("\\u00a0"," ");
+						text = text.replace("\\u0027","'");
+						text = text.replace("\\u2018","'");
+						text = text.replace("\\u2013","-"); //dash
+						text = text.replace("\\u2022","-"); //bullet
+						text = text.replace("\\u25cf","-"); //circle / bullet
+						text = text.replace("\\u2751","-"); //bullet / square
+						text = text.replace("\\u27a2","-"); //arrow
+						text = text.replace("\\u00b0"," "); //degree symbol
+						// some of the content seems to have been OCR'ed
+						text = text.replace("\\ufb01","fi");
+						text = text.replace("\\ufb02","fl");
+						text = text.replace("\\u00a9","(c)"); //copyright
+						output = output + "(" + text.replaceAll("\"","") + ") show\n";
+					}
+				}
 			} else {
 			  textBody = "[" + div[1];
+			  System.out.println("TextBody is: " + textBody);
 			  String[] textBodyData = textBody.split("\\],\\[");
 			  for (String sss : textBodyData) {
 				String temp = sss.replaceAll("\\[","");
@@ -72,24 +118,33 @@ public class pdfStreamToEPS {
 				x = Double.parseDouble(textInfo[0])*fontScale;
 				output = output + (x + xOffset) + " " + (height - yOffset - fontScale) + " moveto\n";
 				String glyph = textInfo[1].replaceAll("\"","");
+				String unicode = "";
 				if (glyph.startsWith("\\u")) {
-					glyph = "<FEFF" + glyph.substring(2) + ">";
+					unicode = glyph.substring(2);
+					if (unicode.equals("27a2")) {
+						unicode = "2022";
+					}
+					glyph = "<FEFF" + unicode + ">";
+					output = output + "-10 -5 " + glyph + " ashow\n";
 				} else {
 					glyph = "(" + glyph + ")";
 				}
 				// here, we take care of embedding parentheses in the eps
-				// and they need some -x shift to render properly
-				if (glyph.equals("(()")) {
+				// and they need some -x shift to render properly for Times New Roman
+				if (glyph.equals("(()") && unicode.equals("")) {
 					output = output + "-10 0 <FEFF0028> ashow\n";
-				} else if (glyph.equals("())")) {
+				} else if (glyph.equals("())") && unicode.equals("")) {
                                         output = output + "-10 0 <FEFF0029> ashow\n";
-                                } else	if (!glyph.equals("( )")) {
+				// and here we escape the backslash to keep the eps parsing happy 
+                                } else if (glyph.equals("(\\)") && unicode.equals("")) {
+                                        output = output + "(\\\\) show\n";
+				} else if (!glyph.equals("( )") && unicode.equals("")) {
 					output = output + glyph + " show\n";
 				}
 			  }
 			}
-			System.out.println(textHeader);
-			System.out.println(textBody);
+			System.out.println("TextHeader:\n" + textHeader);
+			System.out.println("TextBody:\n " + textBody);
 		}
 		return (header + output + footer);
 	}
@@ -182,7 +237,14 @@ public class pdfStreamToEPS {
 			}
 		}
 		// having converted each page of content to eps, minus embedded
-		// fonts, we save them out to sequentially numbered files 
+		// fonts, we save them out to sequentially numbered files
+		// next stop is inspect with something like
+		//   qpdfview *.eps
+		// if ok, then convert to .pdf i.e.
+		//   gimp *.eps
+		// then export one at a time to outputN.pdf
+		// then something like
+		//   pdfunite output*.pdf mergedFile.pdf 
 		for (String s : EPS) {
                 	//System.out.println(s);
 			String filename = "output" + index + ".eps";
