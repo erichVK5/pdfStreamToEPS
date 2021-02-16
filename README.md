@@ -27,15 +27,19 @@ zlib-flate -uncompress < streamed_document_of_interest_01.pdf.bin > raw_text.txt
 
 The uncompressed text stream depicts a simple tree of text information that includes information such as 
 
-  number of pages in the blob, along with width, and height, followed by
-  a list of pages, each containing
-  page number
-  page width
-  page height
-  lists of embedded base64 encoded fonts
-  text arrays, typically with a label and discrete chars that draw the label
+  - number of pages in the blob, along with width, and height, followed by
+  - a list of pages, each containing
+  - page number
+  - page width
+  - page height
+  - lists of embedded base64 encoded fonts
+  - text arrays, typically with a text string +/- optional subsection drawing the string with chars
 
-The embedded text rendering data appeared to be most easily mapped to eps format for extraction and viewing, and the java utility was developed to do this
+Some streamed pdfs consist only of text blocks placing text strings, whereas the other variety found in the wild has a for each such text block a child array of text blocks each placing one char at a time to draw the parent text string. The code supports both.
+
+Streamed pdfs often include unicode and sometimes html codes like &gt; which seem to be artefacts of the exporter and the original font used. The code attempts to catch these and make sane substitutions.
+
+The embedded text rendering data appeared to be most easily mapped to eps format for extraction and viewing, and the java utility was developed to do this.
 
 The java utility needs to be compiled
 
@@ -53,7 +57,17 @@ Fonts are not extracted at this point in time, but with suitable base64-fu they 
 
 Obviously, if a set of sequential pdf pages are produced, they can be combined with a utility such as pdfunite, i.e.
 
-  pdfunite foo.pdf bar.pdf combined_output.pdf
+inspect the generated files first
+
+  qpdfview output*.eps
+  
+if happy with placement and substitutions, use a tool to export to pdf, such as the gimp
+
+  gimp output*.eps
+  
+then in the gimp export each one to pdf
+
+  pdfunite ouput0.pdf ouput1.pdf combined_output.pdf
 
 Alternatively, if LaTex is being used, the eps files can be embedded within successive pages and exported as pdf.
 
