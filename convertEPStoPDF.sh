@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# utility to convert output*.eps into distinct pdfs then merge all into final pdf
+# utility to convert outputXXXX.eps into distinct pdfs then merge all into final pdf
 
 outputPDF="$1_complete.pdf"
 
@@ -11,3 +11,6 @@ do
 done
 
 pdfunite *eps.pdf "$outputPDF"
+
+rm output????.eps
+rm output????.eps.pdf
