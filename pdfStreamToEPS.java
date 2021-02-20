@@ -132,9 +132,11 @@ public class pdfStreamToEPS {
 				// here, we take care of embedding parentheses in the eps
 				// and they need some -x shift to render properly for Times New Roman
 				if (glyph.equals("(()") && unicode.equals("")) {
-					output = output + "-10 0 <FEFF0028> ashow\n";
+					output = output + "-5 0 <FEFF0028> ashow\n";
+					//output = output + "-10 0 <FEFF0028> ashow\n";
 				} else if (glyph.equals("())") && unicode.equals("")) {
-                                        output = output + "-10 0 <FEFF0029> ashow\n";
+					output = output + "-5 0 <FEFF0029> ashow\n";
+					//output = output + "-10 0 <FEFF0029> ashow\n";
 				// and here we escape the backslash to keep the eps parsing happy 
                                 } else if (glyph.equals("(\\)") && unicode.equals("")) {
                                         output = output + "(\\\\) show\n";
@@ -159,7 +161,7 @@ public class pdfStreamToEPS {
 		int rBrCount = 0;
 		int width = 0;
 		int height = 0;
-		int index = 0;
+		int index = 1; // start index at 1, as streamed backgrounds start at ".pdf_1.jpg"
 		// this is the brute force/inelegant raw text stream tree flattening code
 		for (String file : args) {
 			depth = 0;
@@ -247,7 +249,7 @@ public class pdfStreamToEPS {
 		//   pdfunite output*.pdf mergedFile.pdf 
 		for (String s : EPS) {
                 	//System.out.println(s);
-			String filename = "output" + index + ".eps";
+			String filename = String.format("output%04d.eps", index);
 			index++;
 			PrintWriter output = new PrintWriter(new File(filename));
 			output.write(s);
