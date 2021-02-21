@@ -25,6 +25,14 @@ The binary blobs are zlib compressed text streams that can be decompressed as fo
 
 zlib-flate -uncompress < streamed_document_of_interest_01.pdf.bin > raw_text.txt
 
+but there is a helper script to simplify this:
+
+deflateZlib.sh the_file.lib
+
+there is also a helper script that will deflate all \*.bin files in the directory too
+
+deflateMultipleZlib.sh
+
 The uncompressed text stream depicts a simple tree of text information that includes information such as 
 
   - number of pages in the blob, along with width, and height, followed by
@@ -49,6 +57,14 @@ after which it can be invoked as follows
 
   java pdfStreamToEPS raw_text.txt raw_text_2.txt another_stream.txt
 
+There is also a helper script for this
+
+zlibToEPS.sh
+
+there is also a combined helper script that does everything in one hit
+
+convertZlibToTextToEPStoPDF.sh
+
 the utility will inelegantly rip apart the stream(s) and generate an eps file for each page in the raw text stream, which can be viewed and/or processed further or embedded with a suitable utility.
 
 The y-axis is inverted relative to the stream by the code for EPS purposes. 
@@ -59,17 +75,36 @@ Obviously, if a set of sequential pdf pages are produced, they can be combined w
 
 inspect the generated files first
 
-  qpdfview output*.eps
+  qpdfview output\*.eps
   
 if happy with placement and substitutions, use a tool to export to pdf, such as the gimp
 
-  gimp output*.eps
+  gimp output\*.eps
   
 then in the gimp export each one to pdf
 
   pdfunite ouput0.pdf ouput1.pdf combined_output.pdf
 
 Alternatively, if LaTex is being used, the eps files can be embedded within successive pages and exported as pdf.
+
+There is also the option to use the helper script
+
+convertEPStoPDF.sh
+
+There may be streamed background jpegs that go with each streamed zlib encoded text page, and the image can be merged with the following helper script
+
+merge.sh
+
+If you want to apply a mask to, i.e. modify, the background jpeg, there is a helper utility for this too
+
+apply_mask.sh
+
+The java code will also automatically export two shell scripts which can facilitate subsequent merging a set of background jpegs, if required, with the eps outputs of the utility, and these are geenrated as: 
+
+merge_multiple_masked.sh
+merge_multiple.sh
+
+you will likely need to chmod +x the scripts before use
 
 TODO: 
 
