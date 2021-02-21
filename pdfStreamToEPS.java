@@ -25,6 +25,7 @@ public class pdfStreamToEPS {
 
 	static ArrayList<String> elements = new ArrayList<String>();
 	static ArrayList<String> EPS = new ArrayList<String>();
+	static ArrayList<String> script = new ArrayList<String>();
 
 	public static String textToEPS (String textStream, int width, int height) {
 		Double shrinkFactor = 1.0; // kludge used for whole string rendering
@@ -106,6 +107,10 @@ public class pdfStreamToEPS {
 						text = text.replace("\\u00a9","(c)"); //copyright
 						output = output + "(" + text.replaceAll("\"","") + ") show\n";
 					}
+				} else { // display contained URL string
+					String URL = text.substring(11);
+					URL = URL.substring(0,URL.indexOf(")"));
+					output = output + "(" + URL + ") show\n";
 				}
 			} else {
 			  textBody = "[" + div[1];
@@ -132,10 +137,10 @@ public class pdfStreamToEPS {
 				// here, we take care of embedding parentheses in the eps
 				// and they need some -x shift to render properly for Times New Roman
 				if (glyph.equals("(()") && unicode.equals("")) {
-					output = output + "-5 0 <FEFF0028> ashow\n";
+					output = output + "-10 0 <FEFF0028> ashow\n";
 					//output = output + "-10 0 <FEFF0028> ashow\n";
 				} else if (glyph.equals("())") && unicode.equals("")) {
-					output = output + "-5 0 <FEFF0029> ashow\n";
+					output = output + "-10 0 <FEFF0029> ashow\n";
 					//output = output + "-10 0 <FEFF0029> ashow\n";
 				// and here we escape the backslash to keep the eps parsing happy 
                                 } else if (glyph.equals("(\\)") && unicode.equals("")) {
@@ -162,6 +167,8 @@ public class pdfStreamToEPS {
 		int width = 0;
 		int height = 0;
 		int index = 1; // start index at 1, as streamed backgrounds start at ".pdf_1.jpg"
+		script.add("#!/bin/sh\n#using imagemagick utility v6\n");
+		script.add("#convert {background} {overlay} [{mask}] [-compose{method}] -composite {result}\n");
 		// this is the brute force/inelegant raw text stream tree flattening code
 		for (String file : args) {
 			depth = 0;
@@ -250,8 +257,12 @@ public class pdfStreamToEPS {
 		for (String s : EPS) {
                 	//System.out.println(s);
 			String filename = String.format("output%04d.eps", index);
-			index++;
 			PrintWriter output = new PrintWriter(new File(filename));
+			String background = String.format("*_%02d.jpg", index);
+			index++;
+			String shellCommand = "convert -composite " + background
+				+ " " + filename + " " + filename + ".pdf\n";
+			script.add(shellCommand);
 			output.write(s);
                         output.flush();
          		output.close();
@@ -259,5 +270,18 @@ public class pdfStreamToEPS {
 		elements.clear();
 		EPS.clear();
 		} // iterate over provided filenames
+                PrintWriter scriptFile = new PrintWriter(new File("merge_multiple.sh"));
+		PrintWriter scriptFile2 = new PrintWriter(new File("merge_multiple_masked.sh"));
+		for (String ss : script) {
+			scriptFile.write(ss);
+			String masked = ss.replace(".jpg", ".jpg.jpg");
+			scriptFile2.write(masked);
+		}
+		scriptFile.write("pdfunite *.eps.pdf merged.pdf\n");
+		scriptFile2.write("pdfunite *.eps.pdf merged.pdf\n");
+		scriptFile.flush();
+		scriptFile2.flush();
+		scriptFile.close();
+		scriptFile2.close();
 	}
 }
